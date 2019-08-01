@@ -4,40 +4,17 @@
  * Module dependencies.
  */
 
+require('dotenv').config()
 const app = require('../src/app');
-const debug = require('debug')('express:server');
+const debug = require('debug')('relaxedjs:server');
 const http = require('http');
-const colors = require('colors/safe');
 
 /**
  * Args!
  */
 
-const program = require('commander');
-
-var input, output;
-const version = require('../../ReLaXed/package.json').version;
-
-program
-    .version(version)
-    .usage('<input> [output] [options]')
-    .arguments('<input> [output] [options]')
-    // .option('--no-sandbox', 'disable puppeteer sandboxing')
-    .option('--basedir <location>', 'Base directory for report source folders')
-    .action(function (inp, out) {
-      input = inp
-      output = out
-    });
-
-program.parse(process.argv);
-
-if (program.basedir) {
-  app.set('basedir', program.basedir)
-} else {
-  console.error(colors.red('\'--basedir\' must be provided'));
-  program.outputHelp((txt) => colors.red(txt));
-  process.exit(1)
-}
+const version = require('../package.json').version;
+console.log("ReLaXed server version " + version)
 
 /**
  * Get port from environment and store in Express.

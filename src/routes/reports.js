@@ -2,7 +2,7 @@ const express = require('express')
 const path = require('path')
 const fg = require('fast-glob')
 
-const { browseToPage, contentToHtml } = require('relaxedjs/src/render')
+const render = require('relaxedjs/src/render')
 
 const router = express.Router()
 
@@ -25,9 +25,9 @@ router.post('/reports/:reportId', async (req, res) => {
   let puppeteerConfig = res.app.get('puppeteerConfig')
   let relaxedGlobals = res.app.get('relaxedGlobals')
 
-  await browseToPage(puppeteerConfig, relaxedGlobals);
+  await render.browseToPage(puppeteerConfig, relaxedGlobals);
 
-  res.send(await contentToHtml(pugContent, relaxedGlobals))
+  res.send(await render.contentToHtml(pugContent, req.params.reportId, relaxedGlobals))
 })
 
 module.exports = router;

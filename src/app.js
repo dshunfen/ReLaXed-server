@@ -46,7 +46,7 @@ async function fun() {
     busy: false,
     config: {},
     configPlugins: [],
-    basedir: '/home/dshunfenthal/dev/relaxed/ReLaXed-cato/report'
+    basedir: process.env.BASEDIR
   }
 
   await plugins.initializePlugins()
