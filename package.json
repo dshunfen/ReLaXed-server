@@ -35,7 +35,7 @@
     "morgan": "~1.9.1",
     "multer": "^1.4.2",
     "pm2": "^3.5.1",
-    "relaxedjs": "dshunfen/ReLaXed#relaxed_server",
+    "relaxedjs": "https://github.com/dshunfen/ReLaXed#relaxed_server",
     "web-resource-inliner": "^4.3.3"
   },
   "devDependencies": {
