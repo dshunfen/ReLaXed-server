@@ -54,6 +54,7 @@ async function fun() {
 
   app.set('puppeteerConfig', puppeteerConfig)
   app.set('relaxedGlobals', relaxedGlobals)
+  app.locals.reportCache = {};
 
   console.log("Finished setting up server!")
 
