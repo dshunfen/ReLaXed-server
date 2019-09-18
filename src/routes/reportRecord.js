@@ -39,7 +39,7 @@ class ReportRecord {
 
     _handleError(err) {
         console.error(this._uuid, err);
-        this._output = err;
+        this._output = err.message;
         this._success = false;
         this._cleanupIn(60 * 60 * 1000);  // 1 hour, reset timeout
     }

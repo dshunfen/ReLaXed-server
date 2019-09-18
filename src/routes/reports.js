@@ -38,7 +38,10 @@ router.post('/reports/:reportId', async (req, res) => {
 
   async function doRender() {
     await render.browseToPage(puppeteerConfig, relaxedGlobals);
-    return await render.contentToHtml(pugContent, req.params.reportId, relaxedGlobals);
+    const html = await render.contentToHtml(pugContent, req.params.reportId, relaxedGlobals);
+    let pdf = await render.contentToPdf(html, relaxedGlobals, '/tmp/render_tmp.html', '/tmp/render_tmp.pdf');
+    pdf = Buffer.from(pdf, 'binary').toString('base64');  // Base64 encode to safely include in JSON
+    return {html, pdf};
   }
 
   const record = new ReportRecord(doRender(), req.app.locals.reportCache);
