@@ -5,7 +5,7 @@
   "main": "src/app.js",
   "scripts": {
     "start": "cross-env NODE_ENV=development nodemon bin/www",
-    "debug": "cross-env NODE_ENV=development nodemon --debug --inspect=0.0.0.0:9229 bin/www",
+    "debug": "cross-env NODE_ENV=development nodemon --inspect=0.0.0.0:9229 bin/www",
     "test": "cross-env NODE_ENV=test mocha",
     "pretest": "mocha .",
     "prod": "pm2-runtime start ecosystem.config.js --env production"

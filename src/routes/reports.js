@@ -29,7 +29,8 @@ router.get('/reports/pending', async (req, res) => {
 });
 
 router.post('/reports/:reportId', async (req, res) => {
-  console.log('reportId',req.params.reportId)
+  const reportId = req.params.reportId;
+  console.log('reportId', reportId)
   const pugContent = req.body.content;
   console.log('body', pugContent, req.body)
 
@@ -38,7 +39,7 @@ router.post('/reports/:reportId', async (req, res) => {
 
   async function doRender() {
     await render.browseToPage(puppeteerConfig, relaxedGlobals);
-    const html = await render.contentToHtml(pugContent, req.params.reportId, relaxedGlobals);
+    const html = await render.contentToHtml(pugContent, reportId, relaxedGlobals);
     let pdf = await render.contentToPdf(html, relaxedGlobals, '/tmp/render_tmp.html', '/tmp/render_tmp.pdf');
     pdf = Buffer.from(pdf, 'binary').toString('base64');  // Base64 encode to safely include in JSON
     return {html, pdf};
