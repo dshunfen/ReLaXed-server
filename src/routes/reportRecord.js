@@ -3,7 +3,6 @@ const uuidv4 = require('uuid/v4');
 class ReportRecord {
     constructor(promise, reportCache) {
         this._uuid = uuidv4();
-        //this._promise = promise;
         this._reportCache = reportCache;
         this._success = null;
         this._output = null;

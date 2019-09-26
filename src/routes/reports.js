@@ -29,8 +29,8 @@ router.get('/reports/pending', async (req, res) => {
 });
 
 router.post('/reports/:reportId', async (req, res) => {
-  const reportId = req.params.reportId;
-  console.log('reportId', reportId)
+  const reportName = req.params.reportId;
+  console.log('reportName', reportName)
   const pugContent = req.body.content;
   console.log('body', pugContent, req.body)
 
@@ -39,7 +39,7 @@ router.post('/reports/:reportId', async (req, res) => {
 
   async function doRender() {
     await render.browseToPage(puppeteerConfig, relaxedGlobals);
-    const html = await render.contentToHtml(pugContent, reportId, relaxedGlobals);
+    const html = await render.contentToHtml(pugContent, reportName, relaxedGlobals);
     let pdf = await render.contentToPdf(html, relaxedGlobals, '/tmp/render_tmp.html', '/tmp/render_tmp.pdf');
     pdf = Buffer.from(pdf, 'binary').toString('base64');  // Base64 encode to safely include in JSON
     return {html, pdf};
@@ -53,7 +53,12 @@ router.post('/reports/:reportId', async (req, res) => {
 router.get('/reports/:asyncId', async (req, res) => {
   const record = req.app.locals.reportCache[req.params.asyncId];
   if (record !== undefined) {
-    res.send(record.getResult());
+    const result = record.getResult();
+    if(result.success) {
+      res.send(result);
+    } else {
+      res.status(400).send(result);
+    }
   }
   else {
     res.status(404).send({detail: 'not found'});
