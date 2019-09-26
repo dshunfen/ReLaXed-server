@@ -36,6 +36,7 @@
     "multer": "^1.4.2",
     "pm2": "^3.5.1",
     "relaxedjs": "https://github.com/dshunfen/ReLaXed#relaxed_server",
+    "tmp-promise": "^2.0.2",
     "uuid": "^3.3.3",
     "web-resource-inliner": "^4.3.3"
   },

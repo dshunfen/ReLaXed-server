@@ -3,6 +3,7 @@ const ReportRecord = require('./reportRecord');
 const express = require('express');
 const path = require('path');
 const fg = require('fast-glob');
+const tmp = require('tmp-promise');
 
 const render = require('relaxedjs/src/render');
 
@@ -40,7 +41,10 @@ router.post('/reports/:reportId', async (req, res) => {
   async function doRender() {
     await render.browseToPage(puppeteerConfig, relaxedGlobals);
     const html = await render.contentToHtml(pugContent, reportName, relaxedGlobals);
-    let pdf = await render.contentToPdf(html, relaxedGlobals, '/tmp/render_tmp.html', '/tmp/render_tmp.pdf');
+    let pdf = await tmp.withDir(o => {
+      console.log("Dir: ", o.path);
+      return render.contentToPdf(html, relaxedGlobals, o.path);
+    }, {unsafeCleanup: true})
     pdf = Buffer.from(pdf, 'binary').toString('base64');  // Base64 encode to safely include in JSON
     return {html, pdf};
   }
