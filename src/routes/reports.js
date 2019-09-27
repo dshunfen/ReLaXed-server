@@ -47,8 +47,8 @@ router.post('/reports/:reportId', async (req, res) => {
     await render.browseToPage(puppeteerConfig, relaxedGlobals);
     const html = await render.contentToHtml(pugContent, reportId, relaxedGlobals);
     let pdf = null
-    if(req.app.get('env') === 'development') {
-      const devPath = req.app.locals.devPath
+    const devPath = req.app.locals.devPath
+    if(req.app.get('env') === 'development' && devPath) {
       if (!fs.existsSync(devPath)){
           fs.mkdirSync(devPath);
       }
