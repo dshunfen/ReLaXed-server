@@ -23,7 +23,9 @@ app.use(express.urlencoded({
   limit: '50mb',
 }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
+if (process.env.DEV_PATH) {
+  app.use('/static', express.static(process.env.DEV_PATH))
+}
 
 // app.locals.program = program
 app.use(bodyParser.json());
@@ -48,7 +50,7 @@ app.use(function(err, req, res, next) {
   });
 });
 
-async function fun() {
+async function init() {
   var puppeteerConfig = preConfigure(false)
 
   var relaxedGlobals = {
@@ -64,11 +66,10 @@ async function fun() {
   app.set('puppeteerConfig', puppeteerConfig)
   app.set('relaxedGlobals', relaxedGlobals)
   app.locals.reportCache = {};
+  app.locals.devPath = process.env.DEV_PATH;
 
-  console.log("Finished setting up server!")
-
-  return true;
+  console.log("Finished initializing the server!")
 }
-fun().then((text) => console.log(text))
+init()
 
 module.exports = app;
