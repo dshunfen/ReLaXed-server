@@ -1,7 +1,8 @@
 const uuidv4 = require('uuid/v4');
 
 class ReportRecord {
-    constructor(promise, reportCache) {
+    constructor(promise, report_id, reportCache) {
+        this._reportId = report_id;
         this._uuid = uuidv4();
         this._reportCache = reportCache;
         this._success = null;
@@ -22,6 +23,7 @@ class ReportRecord {
             uuid: this._uuid,
             success: this._success,
             output: this._output,
+            reportId: this._reportId,
         };
     }
 
@@ -45,13 +47,13 @@ class ReportRecord {
 
     _doCleanup() {
         if (this._output !== undefined) {
-            console.log('Cleaning up report %s', this._uuid);
+            console.log('Cleaning up report %s with id %s', this._reportId, this._uuid);
             delete this._reportCache[this._uuid];  // Remove this report record from the cache
             delete this._reportCache;  // Get rid of our reference to the report cache to eliminate potential circular references
             delete this._output;  // The output is the biggest part, so make sure it is deleted immediately
         }
         else {
-            console.log('Report %s was already cleaned up', this._uuid);
+            console.log('Report %s with id %s was already cleaned up', this._reportId, this._uuid);
         }
     }
 

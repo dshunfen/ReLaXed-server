@@ -29,14 +29,14 @@ router.get('/reports/pending', async (req, res) => {
 });
 
 router.post('/reports/:reportId', async (req, res) => {
-  const reportName = req.params.reportId;
+  const reportId = req.params.reportId;
   const pugContent = req.body.content;
   const format = req.query.format;
 
   const basedir = res.app.get('relaxedGlobals').basedir;
   const availableReports = await reportIds(basedir)
-  if(!availableReports.includes(reportName)) {
-    res.status(404).send({error: `Report ${reportName} is not an available report to create`});
+  if(!availableReports.includes(reportId)) {
+    res.status(404).send({error: `Report ${reportId} is not an available report to create`});
     return;
   }
 
@@ -45,7 +45,7 @@ router.post('/reports/:reportId', async (req, res) => {
 
   async function doRender() {
     await render.browseToPage(puppeteerConfig, relaxedGlobals);
-    const html = await render.contentToHtml(pugContent, reportName, relaxedGlobals);
+    const html = await render.contentToHtml(pugContent, reportId, relaxedGlobals);
     let pdf = null
     if(req.app.get('env') === 'development') {
       const devPath = req.app.locals.devPath
@@ -57,7 +57,7 @@ router.post('/reports/:reportId', async (req, res) => {
       pdf = await render.contentToPdf(html, relaxedGlobals, devPath);
     } else {
       const tmpdirOptions = {unsafeCleanup: true};
-      let pdf = await tmp.withDir(o => {
+      pdf = await tmp.withDir(o => {
         console.log(`Writing file to dir \'${o.path}\'`)
         return render.contentToPdf(html, relaxedGlobals, o.path);
       }, tmpdirOptions)
@@ -66,7 +66,7 @@ router.post('/reports/:reportId', async (req, res) => {
     return {html, pdf};
   }
 
-  const record = new ReportRecord(doRender(), req.app.locals.reportCache);
+  const record = new ReportRecord(doRender(), reportId, req.app.locals.reportCache);
 
   res.send({uuid: record.uuid})
 });
