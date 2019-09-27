@@ -44,7 +44,7 @@ router.post('/reports/:reportId', async (req, res) => {
   const relaxedGlobals = res.app.get('relaxedGlobals');
 
   async function doRender() {
-    await render.browseToPage(puppeteerConfig, relaxedGlobals);
+    const page = await render.browseToPage(puppeteerConfig);
     const html = await render.contentToHtml(pugContent, reportId, relaxedGlobals);
     let pdf = null
     const devPath = req.app.locals.devPath
@@ -54,14 +54,15 @@ router.post('/reports/:reportId', async (req, res) => {
       }
       console.log(`Writing development files to dir \'${devPath}\'`)
       fs.writeFileSync(path.resolve(devPath, 'report.pug'), pugContent)
-      pdf = await render.contentToPdf(html, relaxedGlobals, devPath);
+      pdf = await render.contentToPdf(html, relaxedGlobals, devPath, page);
     } else {
       const tmpdirOptions = {unsafeCleanup: true};
       pdf = await tmp.withDir(o => {
         console.log(`Writing file to dir \'${o.path}\'`)
-        return render.contentToPdf(html, relaxedGlobals, o.path);
+        return render.contentToPdf(html, relaxedGlobals, o.path, page);
       }, tmpdirOptions)
     }
+    await page.browser().close();
     pdf = Buffer.from(pdf, 'binary').toString('base64');  // Base64 encode to safely include in JSON
     return {html, pdf};
   }
@@ -80,6 +81,16 @@ router.get('/reports/:asyncId', async (req, res) => {
     } else {
       res.status(400).send(result);
     }
+  }
+  else {
+    res.status(404).send({detail: 'not found'});
+  }
+});
+
+router.get('/reports/:asyncId/status', async (req, res) => {
+  const record = req.app.locals.reportCache[req.params.asyncId];
+  if (record !== undefined) {
+    res.send({complete: record.isComplete()});
   }
   else {
     res.status(404).send({detail: 'not found'});
