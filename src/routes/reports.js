@@ -5,6 +5,7 @@ const express = require('express');
 const tmp = require('tmp-promise');
 const path = require('path');
 const fs = require('fs');
+const Email = require("email-templates");
 
 const render = require('relaxedjs/src/render');
 
@@ -31,9 +32,16 @@ router.get('/reports/pending', async (req, res) => {
 router.post('/reports/:reportId', async (req, res) => {
   const reportId = req.params.reportId;
   const pugContent = req.body.content;
-  const format = req.query.format;
+  const format = req.body.format;
 
-  const basedir = res.app.get('relaxedGlobals').basedir;
+  if(!['pdf', 'html'].includes(format)) {
+    res.status(404).send({error: `Report format must be specified. Either "pdf" or "html"`});
+    return;
+  }
+
+  const relaxedGlobals = res.app.get('relaxedGlobals');
+
+  const basedir = relaxedGlobals.basedir;
   const availableReports = await reportIds(basedir)
   if(!availableReports.includes(reportId)) {
     res.status(404).send({error: `Report ${reportId} is not an available report to create`});
@@ -41,33 +49,54 @@ router.post('/reports/:reportId', async (req, res) => {
   }
 
   const puppeteerConfig = res.app.get('puppeteerConfig');
-  const relaxedGlobals = res.app.get('relaxedGlobals');
+
+  const assetPath = path.resolve(relaxedGlobals.basedir, reportId);
 
   async function doRender() {
-    const page = await render.browseToPage(puppeteerConfig);
-    const html = await render.contentToHtml(pugContent, reportId, relaxedGlobals);
-    let pdf = null
-    const devPath = req.app.locals.devPath
-    if(req.app.get('env') === 'development' && devPath) {
-      if (!fs.existsSync(devPath)){
+    const html = await render.contentToHtml(pugContent, assetPath, relaxedGlobals);
+    let output = null;
+    if(format === 'pdf') {
+      const devPath = req.app.locals.devPath;
+      const page = await render.browseToPage(puppeteerConfig);
+      if (req.app.get('env') === 'development' && devPath) {
+        if (!fs.existsSync(devPath)) {
           fs.mkdirSync(devPath);
+        }
+        console.log(`Writing development files to dir \'${devPath}\'`)
+        fs.writeFileSync(path.resolve(devPath, 'report.pug'), pugContent)
+        output = await render.contentToPdf(html, relaxedGlobals, devPath, page);
       }
-      console.log(`Writing development files to dir \'${devPath}\'`)
-      fs.writeFileSync(path.resolve(devPath, 'report.pug'), pugContent)
-      pdf = await render.contentToPdf(html, relaxedGlobals, devPath, page);
+      else {
+        const tmpdirOptions = {unsafeCleanup: true};
+        output = await tmp.withDir(o => {
+          console.log(`Writing file to dir \'${o.path}\'`)
+          return render.contentToPdf(html, relaxedGlobals, o.path, page);
+        }, tmpdirOptions)
+      }
+      await page.browser().close();
     } else {
-      const tmpdirOptions = {unsafeCleanup: true};
-      pdf = await tmp.withDir(o => {
-        console.log(`Writing file to dir \'${o.path}\'`)
-        return render.contentToPdf(html, relaxedGlobals, o.path, page);
-      }, tmpdirOptions)
+      const email = new Email({
+          juice: true,
+          juiceResources: {
+              preserveImportant: true,
+              webResources: {
+                  relativeTo: assetPath,
+                  images: true
+              }
+          },
+          render: async (view, locals) => {
+            return await email.juiceResources(view);
+          }
+      });
+      output = await email.render(html);
     }
-    await page.browser().close();
-    pdf = Buffer.from(pdf, 'binary').toString('base64');  // Base64 encode to safely include in JSON
-    return {html, pdf};
+    output = Buffer.from(output, 'binary').toString('base64');  // Base64 encode to safely include in JSON
+    return output;
   }
 
-  const record = new ReportRecord(doRender(), reportId, req.app.locals.reportCache);
+  const reportParams = {reportId: reportId, format: format}
+
+  const record = new ReportRecord(doRender(), reportParams, req.app.locals.reportCache);
 
   res.send({uuid: record.uuid})
 });

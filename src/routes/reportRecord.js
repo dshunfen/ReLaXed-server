@@ -1,8 +1,8 @@
 const uuidv4 = require('uuid/v4');
 
 class ReportRecord {
-    constructor(promise, report_id, reportCache) {
-        this._reportId = report_id;
+    constructor(promise, report_params, reportCache) {
+        this._report_params = report_params;
         this._uuid = uuidv4();
         this._reportCache = reportCache;
         this._success = null;
@@ -20,10 +20,10 @@ class ReportRecord {
         // TODO: bail or complain if not yet complete
         this._cleanupIn(5 * 60 * 1000);  // Give 5 minutes to re-request report if needed
         return {
+            ...this._report_params,
             uuid: this._uuid,
             success: this._success,
             output: this._output,
-            reportId: this._reportId,
         };
     }
 
