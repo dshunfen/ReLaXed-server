@@ -69,7 +69,6 @@ router.post('/reports/:reportId', async (req, res) => {
       else {
         const tmpdirOptions = {unsafeCleanup: true};
         output = await tmp.withDir(o => {
-          console.log(`Writing file to dir \'${o.path}\'`)
           return render.contentToPdf(html, relaxedGlobals, o.path, page);
         }, tmpdirOptions)
       }
@@ -81,7 +80,8 @@ router.post('/reports/:reportId', async (req, res) => {
               preserveImportant: true,
               webResources: {
                   relativeTo: assetPath,
-                  images: true
+                  images: true,
+                  strict: true
               }
           },
           render: async (view, locals) => {

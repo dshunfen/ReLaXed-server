@@ -32,7 +32,6 @@ class ReportRecord {
     }
 
     _handleComplete(output) {
-        console.debug(this._uuid, output);
         this._output = output;
         this._success = true;
         this._cleanupIn(60 * 60 * 1000);  // 1 hour, reset timeout
@@ -47,13 +46,13 @@ class ReportRecord {
 
     _doCleanup() {
         if (this._output !== undefined) {
-            console.log('Cleaning up report %s with id %s', this._reportId, this._uuid);
+            console.log('Cleaning up report id %s', this._uuid);
             delete this._reportCache[this._uuid];  // Remove this report record from the cache
             delete this._reportCache;  // Get rid of our reference to the report cache to eliminate potential circular references
             delete this._output;  // The output is the biggest part, so make sure it is deleted immediately
         }
         else {
-            console.log('Report %s with id %s was already cleaned up', this._reportId, this._uuid);
+            console.log('Report id %s was already cleaned up', this._uuid);
         }
     }
 
