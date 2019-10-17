@@ -52,51 +52,57 @@ router.post('/reports/:reportId', async (req, res) => {
 
   const assetPath = path.resolve(relaxedGlobals.basedir, reportId);
 
-  async function doRender() {
-    const html = await render.contentToHtml(pugContent, assetPath, relaxedGlobals);
-    let output = null;
-    if(format === 'pdf') {
-      const devPath = req.app.locals.devPath;
-      const page = await render.browseToPage(puppeteerConfig);
-      if (req.app.get('env') === 'development' && devPath) {
-        if (!fs.existsSync(devPath)) {
-          fs.mkdirSync(devPath);
-        }
-        console.log(`Writing development files to dir \'${devPath}\'`)
-        fs.writeFileSync(path.resolve(devPath, 'report.pug'), pugContent)
-        output = await render.contentToPdf(html, relaxedGlobals, devPath, page);
-      }
-      else {
-        const tmpdirOptions = {unsafeCleanup: true};
-        output = await tmp.withDir(o => {
-          return render.contentToPdf(html, relaxedGlobals, o.path, page);
-        }, tmpdirOptions)
-      }
-      await page.browser().close();
-    } else {
-      const email = new Email({
-          juice: true,
-          juiceResources: {
+  function doRender(updateStatus) {
+    return new Promise(resolve => {
+      setTimeout(async () => {
+        updateStatus(ReportRecord.REPORT_STATUSES.GENERATING_HTML);
+        const html = await render.contentToHtml(pugContent, assetPath, relaxedGlobals);
+        let output = null;
+        if(format === 'pdf') {
+          updateStatus(ReportRecord.REPORT_STATUSES.GENERATING_PDF);
+          const devPath = req.app.locals.devPath;
+          const page = await render.browseToPage(puppeteerConfig);
+          if (req.app.get('env') === 'development' && devPath) {
+            if (!fs.existsSync(devPath)) {
+              fs.mkdirSync(devPath);
+            }
+            console.log(`Writing development files to dir \'${devPath}\'`)
+            fs.writeFileSync(path.resolve(devPath, 'report.pug'), pugContent)
+            output = await render.contentToPdf(html, relaxedGlobals, devPath, page);
+          }
+          else {
+            const tmpdirOptions = {unsafeCleanup: true};
+            output = await tmp.withDir(o => {
+              return render.contentToPdf(html, relaxedGlobals, o.path, page);
+            }, tmpdirOptions)
+          }
+          await page.browser().close();
+        } else {
+          const email = new Email({
+            juice: true,
+            juiceResources: {
               preserveImportant: true,
               webResources: {
-                  relativeTo: assetPath,
-                  images: true,
-                  strict: true
+                relativeTo: assetPath,
+                images: true,
+                strict: true
               }
-          },
-          render: async (view, locals) => {
-            return await email.juiceResources(view);
-          }
-      });
-      output = await email.render(html);
-    }
-    output = Buffer.from(output, 'binary').toString('base64');  // Base64 encode to safely include in JSON
-    return output;
+            },
+            render: async (view, locals) => {
+              return await email.juiceResources(view);
+            }
+          });
+          output = await email.render(html);
+        }
+        output = Buffer.from(output, 'binary').toString('base64');  // Base64 encode to safely include in JSON
+        resolve(output);
+      }, 0);
+    });
   }
 
   const reportParams = {reportId: reportId, format: format}
 
-  const record = new ReportRecord(doRender(), reportParams, req.app.locals.reportCache);
+  const record = new ReportRecord(doRender, reportParams, req.app.locals.reportCache);
 
   res.send({uuid: record.uuid})
 });
@@ -119,7 +125,7 @@ router.get('/reports/:asyncId', async (req, res) => {
 router.get('/reports/:asyncId/status', async (req, res) => {
   const record = req.app.locals.reportCache[req.params.asyncId];
   if (record !== undefined) {
-    res.send({complete: record.isComplete()});
+    res.send(record.getStatus());
   }
   else {
     res.status(404).send({detail: 'not found'});

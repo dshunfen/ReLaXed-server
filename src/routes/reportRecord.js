@@ -1,14 +1,24 @@
 const uuidv4 = require('uuid/v4');
 
+const REPORT_STATUSES = {
+    RECEIVED: 'Received',
+    GENERATING_HTML: 'Generating HTML',
+    GENERATING_PDF: 'Generating PDF',
+    FINISHED: 'Finished',
+};
+const REPORT_STATUSES_INVERSE = {};
+Object.entries(REPORT_STATUSES).forEach(e => {REPORT_STATUSES_INVERSE[e[1]] = e[0]});
+
 class ReportRecord {
-    constructor(promise, report_params, reportCache) {
+    constructor(runFunc, report_params, reportCache) {
         this._report_params = report_params;
         this._uuid = uuidv4();
         this._reportCache = reportCache;
+        this._status = REPORT_STATUSES.RECEIVED;
         this._success = null;
         this._output = null;
         reportCache[this.uuid] = this;
-        promise.then(this._handleComplete.bind(this), this._handleError.bind(this));
+        runFunc(this._handleStatus.bind(this)).then(this._handleComplete.bind(this), this._handleError.bind(this));
         this._cleanupIn(60 * 60 * 1000);  // 1 hour
     }
 
@@ -23,7 +33,18 @@ class ReportRecord {
             ...this._report_params,
             uuid: this._uuid,
             success: this._success,
+            status: this._status,
             output: this._output,
+        };
+    }
+
+    getStatus() {
+        return {
+            ...this._report_params,
+            uuid: this._uuid,
+            success: this._success,
+            status: this._status,
+            complete: this.isComplete(),
         };
     }
 
@@ -34,6 +55,7 @@ class ReportRecord {
     _handleComplete(output) {
         this._output = output;
         this._success = true;
+        this._status = REPORT_STATUSES.FINISHED;
         this._cleanupIn(60 * 60 * 1000);  // 1 hour, reset timeout
     }
 
@@ -41,6 +63,15 @@ class ReportRecord {
         console.error(this._uuid, err);
         this._output = err.message;
         this._success = false;
+        this._status = REPORT_STATUSES.FINISHED;
+        this._cleanupIn(60 * 60 * 1000);  // 1 hour, reset timeout
+    }
+
+    _handleStatus(status) {
+        if (!REPORT_STATUSES_INVERSE[status]) {
+            throw 'Unknown status: ' + status
+        }
+        this._status = status;
         this._cleanupIn(60 * 60 * 1000);  // 1 hour, reset timeout
     }
 
@@ -64,5 +95,7 @@ class ReportRecord {
         this.timeout = setTimeout(this._doCleanup.bind(this), timeout);
     }
 }
+
+ReportRecord.REPORT_STATUSES = REPORT_STATUSES;
 
 module.exports = ReportRecord;
