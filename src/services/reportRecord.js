@@ -1,4 +1,5 @@
 const uuidv4 = require('uuid/v4');
+const debug = require('debug')('relaxedjs:server:reportRecord');
 
 const REPORT_STATUSES = {
     RECEIVED: 'Received',
@@ -53,6 +54,7 @@ class ReportRecord {
     }
 
     _handleComplete(output) {
+        debug(this._uuid, 'finished');
         this._output = output;
         this._success = true;
         this._status = REPORT_STATUSES.FINISHED;
@@ -61,7 +63,7 @@ class ReportRecord {
 
     _handleError(err) {
         console.error(this._uuid, err);
-        this._output = err.message;
+        this._output = err.message || err;
         this._success = false;
         this._status = REPORT_STATUSES.FINISHED;
         this._cleanupIn(60 * 60 * 1000);  // 1 hour, reset timeout
@@ -71,6 +73,7 @@ class ReportRecord {
         if (!REPORT_STATUSES_INVERSE[status]) {
             throw 'Unknown status: ' + status
         }
+        debug('%s set status to %o', this._uuid, status);
         this._status = status;
         this._cleanupIn(60 * 60 * 1000);  // 1 hour, reset timeout
     }
@@ -80,7 +83,7 @@ class ReportRecord {
             console.log('Cleaning up report id %s', this._uuid);
             delete this._reportCache[this._uuid];  // Remove this report record from the cache
             delete this._reportCache;  // Get rid of our reference to the report cache to eliminate potential circular references
-            delete this._output;  // The output is the biggest part, so make sure it is deleted immediately
+            delete this._output;  // The output is the biggest part, so make sure it is deleted immediately and doesn't stick around if this object isn't garbage collected
         }
         else {
             console.log('Report id %s was already cleaned up', this._uuid);

@@ -1,7 +1,9 @@
 const express = require('express')
 const path = require('path')
 const bodyParser = require('body-parser')
-const plugins = require('relaxedjs/src/plugins')
+const Pool = require('cloth/pool');
+const os = require('os');
+const debug = require('debug')('relaxedjs:server');
 
 // HTTP stuff
 const createError = require('http-errors')
@@ -9,11 +11,10 @@ const cookieParser = require('cookie-parser')
 const logger = require('morgan')
 
 const reportsRouter = require("./routes/reports")
-const { preConfigure } = require("relaxedjs/src/config");
 
 const app = express()
 
-app.use(logger('dev'));
+app.use(logger('[:date[iso]] :method :url :status :response-time ms - :req[content-length] - :res[content-length]'));
 app.use(express.json({
   limit: '50mb',
 }));
@@ -50,23 +51,67 @@ app.use(function(err, req, res, next) {
   });
 });
 
-async function init() {
-  var puppeteerConfig = preConfigure(false)
+function init() {
 
-  var relaxedGlobals = {
-    busy: false,
-    config: {},
-    configPlugins: [],
-    basedir: process.env.BASEDIR
+  for (let i = 0; i <process.execArgv.length; i++) {
+    const arg = process.execArgv[i];
+    if (arg.startsWith('--inspect')) {
+      debug("initial process.execArgv: %o", process.execArgv);
+      debug('Node is running with --inspect for debugging; modify process.execArgv so worker processes bind to a different port');
+      const li = arg.lastIndexOf(':');
+      if (li > -1) {
+        process.execArgv[i] = arg.slice(0, li+1).replace('-brk','') + '0';
+      }
+      debug("new process.execArgv: %o", process.execArgv);
+    }
   }
 
-  await plugins.initializePlugins()
-  await plugins.updateRegisteredPlugins(relaxedGlobals, relaxedGlobals.basedir)
 
-  app.set('puppeteerConfig', puppeteerConfig)
-  app.set('relaxedGlobals', relaxedGlobals)
+  let workerCount = parseInt(process.env.REPORT_WORKER_COUNT);
+  if (!workerCount) {
+    if (app.get('env') === 'development') {
+      workerCount = 1;
+    }
+    else {
+      workerCount = Math.max(os.cpus()/4, 1);
+    }
+  }
+  debug("Using %s worker processes", workerCount);
+  const pool = new Pool(__dirname + '/services/reportWorker.js', {
+    arguments: [JSON.stringify({
+      basedir: process.env.BASEDIR,
+      devPath: process.env.DEV_PATH,
+      env: app.get('env'),
+    })],
+    workers: workerCount,
+  });
+  pool.on('error', (err, task) => {
+    console.error('Pool error: %o', err);
+    if (task) {
+      if (task.command && task.command.pugContent) {
+        task.command.pugContent = task.command.pugContent.slice(0,100);
+      }
+      debug('Task: %o', task);
+    }
+  });
+
+  const task = pool.run('STARTUP_PING');  // TODO: make this a constant
+  task.on('end', (msg) => {
+    if (msg !== 'PONG') {
+      console.error('Initialization task returned %o instead of expected "PONG", aborting server', msg);
+      process.abort();
+    }
+    debug('Initialization task output: %o', msg);
+  });
+  task.on('error', (err) => {
+    console.error('Initialization task failed, aborting server: %o', err);
+    process.abort();
+  });
+
+  app.locals.pool = pool;
   app.locals.reportCache = {};
   app.locals.devPath = process.env.DEV_PATH;
+  app.locals.basedir = process.env.BASEDIR;
 
   console.log("Finished initializing the server!")
 }
