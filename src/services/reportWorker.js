@@ -43,28 +43,28 @@ worker.run((message, callback) => {
         const assetPath = path.resolve(relaxedGlobals.basedir, message.reportId);
         const pugContent = message.pugContent;
 
+        let devPath = null;
+        if (workerData.env === 'development' && workerData.devPath) {
+            devPath = workerData.devPath;
+            if (!fs.existsSync(devPath)) {
+                fs.mkdirSync(devPath);
+            }
+            console.log(`Writing development files to dir \'${devPath}\'`);
+            fs.writeFileSync(path.resolve(devPath, 'report.pug'), pugContent);
+        }
+
         worker.send('status', ReportRecord.REPORT_STATUSES.GENERATING_HTML);
         const html = await render.contentToHtml(pugContent, assetPath, relaxedGlobals);
         let output = null;
         if (message.format === 'pdf') {
             worker.send('status', ReportRecord.REPORT_STATUSES.GENERATING_PDF);
-            const devPath = workerData.devPath;
             const page = await render.browseToPage(puppeteerConfig);
             try {
-                if (workerData.env === 'development' && devPath) {
-                    if (!fs.existsSync(devPath)) {
-                        fs.mkdirSync(devPath);
-                    }
-                    console.log(`Writing development files to dir \'${devPath}\'`);
-                    fs.writeFileSync(path.resolve(devPath, 'report.pug'), pugContent);
-                    output = await render.contentToPdf(html, relaxedGlobals, devPath, page);
-                }
-                else {
-                    const tmpdirOptions = {unsafeCleanup: true};
-                    output = await tmp.withDir(o => {
-                        return render.contentToPdf(html, relaxedGlobals, o.path, page);
-                    }, tmpdirOptions)
-                }
+                const tmpdirOptions = {unsafeCleanup: true};
+                output = await tmp.withDir(o => {
+                    let path = devPath || o.path;
+                    return render.contentToPdf(html, relaxedGlobals, path, page);
+                }, tmpdirOptions)
             }
             finally {
                 await page.browser().close().catch(console.error);
