@@ -25,7 +25,7 @@ router.get('/reports/pending', async (req, res) => {
 
 router.post('/reports/:reportId', async (req, res) => {
   const reportId = req.params.reportId;
-  const pugContent = req.body.content;
+  const reportData = req.body.data;
   const format = req.body.format;
 
   if(!['pdf', 'html'].includes(format)) {
@@ -46,7 +46,7 @@ router.post('/reports/:reportId', async (req, res) => {
       const task = pool.run({
         reportId,
         format,
-        pugContent,
+        reportData,
       });
       task
           .on('end', resolve)

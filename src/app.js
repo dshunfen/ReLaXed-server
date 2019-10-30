@@ -88,8 +88,8 @@ function init() {
   pool.on('error', (err, task) => {
     console.error('Pool error: %o', err);
     if (task) {
-      if (task.command && task.command.pugContent) {
-        task.command.pugContent = task.command.pugContent.slice(0,100);
+      if (task.command && task.command.reportData) {
+        // TODO: May want to print out key reportData here from task.command.reportData
       }
       debug('Task: %o', task);
     }

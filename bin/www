@@ -16,6 +16,11 @@ const http = require('http');
 const version = require('../package.json').version;
 console.log("ReLaXed server version " + version)
 
+if(!process.env.BASEDIR) {
+  console.error("Basedir must be specified to start server")
+  process.exit(1)
+}
+
 /**
  * Get port from environment and store in Express.
  */

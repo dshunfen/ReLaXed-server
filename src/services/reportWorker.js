@@ -41,7 +41,7 @@ worker.run((message, callback) => {
     }
     (async () => {
         const assetPath = path.resolve(relaxedGlobals.basedir, message.reportId);
-        const pugContent = message.pugContent;
+        const reportData = message.reportData;
 
         let devPath = null;
         if (workerData.env === 'development' && workerData.devPath) {
@@ -50,11 +50,9 @@ worker.run((message, callback) => {
                 fs.mkdirSync(devPath);
             }
             console.log(`Writing development files to dir \'${devPath}\'`);
-            fs.writeFileSync(path.resolve(devPath, 'report.pug'), pugContent);
         }
 
         worker.send('status', ReportRecord.REPORT_STATUSES.GENERATING_HTML);
-        const html = await render.contentToHtml(pugContent, assetPath, relaxedGlobals);
         let output = null;
         if (message.format === 'pdf') {
             worker.send('status', ReportRecord.REPORT_STATUSES.GENERATING_PDF);
@@ -62,8 +60,10 @@ worker.run((message, callback) => {
             try {
                 const tmpdirOptions = {unsafeCleanup: true};
                 output = await tmp.withDir(o => {
-                    let path = devPath || o.path;
-                    return render.contentToPdf(html, relaxedGlobals, path, page);
+                    let outputPath = devPath || o.path;
+                    const tempHTMLPath = path.resolve(outputPath, 'report.html')
+                    const pdfPath = path.resolve(outputPath, 'report.pdf')
+                    return render.fileToPdf(assetPath, relaxedGlobals, tempHTMLPath, pdfPath, reportData, page);
                 }, tmpdirOptions)
             }
             finally {
