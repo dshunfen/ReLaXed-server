@@ -30,7 +30,6 @@
     "d3": "^5.9.7",
     "debug": "~2.6.9",
     "dotenv": "^8.0.0",
-    "email-templates": "^6.0.2",
     "express": "~4.16.1",
     "fast-glob": "^3.0.4",
     "http-errors": "~1.6.3",

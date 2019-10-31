@@ -3,7 +3,6 @@ const worker = require('cloth/worker');
 const tmp = require('tmp-promise');
 const path = require('path');
 const fs = require('fs');
-const Email = require("email-templates");
 
 const plugins = require('relaxedjs/src/plugins');
 const { preConfigure } = require("relaxedjs/src/config");
@@ -20,7 +19,8 @@ const relaxedGlobals = {
     busy: false,
     config: {},
     configPlugins: [],
-    basedir: workerData.basedir
+    basedir: workerData.basedir,
+    pageRenderingTimeout: 60,
 };
 
 
@@ -71,21 +71,7 @@ worker.run((message, callback) => {
             }
         }
         else {
-            const email = new Email({
-                juice: true,
-                juiceResources: {
-                    preserveImportant: true,
-                    webResources: {
-                        relativeTo: assetPath,
-                        images: true,
-                        strict: true
-                    }
-                },
-                render: async (view, locals) => {
-                    return await email.juiceResources(view);
-                }
-            });
-            output = await email.render(html);
+            // TODO - Render the html with webpack assetization
         }
         return Buffer.from(output, 'binary').toString('base64');  // Base64 encode to safely include in JSON
     })().then(output => callback(null, output), error => callback(error));
