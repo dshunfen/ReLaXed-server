@@ -40,7 +40,17 @@
     "relaxedjs": "https://github.com/dshunfen/ReLaXed#relaxed_server",
     "tmp-promise": "^2.0.2",
     "uuid": "^3.3.3",
-    "web-resource-inliner": "^4.3.3"
+    "web-resource-inliner": "^4.3.3",
+    "webpack": "^4.41.2",
+    "html-webpack-inline-source-plugin": "0.0.10",
+    "html-webpack-plugin": "^3.2.0",
+    "webpack-cli": "^3.3.10",
+    "css-loader": "^3.2.0",
+    "style-loader": "^1.0.0",
+    "sass-loader": "^8.0.0",
+    "node-sass": "^4.13.0",
+    "file-loader": "^4.2.0",
+    "url-loader": "^2.2.0"
   },
   "devDependencies": {
     "chai": "^4.2.0",
