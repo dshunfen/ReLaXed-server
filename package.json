@@ -4,6 +4,7 @@
   "description": "Server for the ReLaXed templating tool",
   "main": "src/app.js",
   "scripts": {
+    "reportdev": "cross-env NODE_ENV=development bin/www",
     "start": "cross-env NODE_ENV=development nodemon bin/www",
     "debug": "cross-env NODE_ENV=development nodemon --inspect=0.0.0.0:9229 bin/www",
     "test": "cross-env NODE_ENV=test mocha",
