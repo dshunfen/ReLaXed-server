@@ -9,6 +9,7 @@ const plugins = require('relaxedjs/src/plugins');
 const { preConfigure } = require("relaxedjs/src/config");
 const render = require('relaxedjs/src/render');
 
+const gcIfNeeded = require('./gcIfNeeded');
 const ReportRecord = require('./reportRecord');
 
 const puppeteerConfig = preConfigure(false);
@@ -16,7 +17,7 @@ const puppeteerConfig = preConfigure(false);
 const webpack = require('webpack');
 const webpackP = util.promisify(webpack);
 
-const HtmlWebpackPlugin = require('html-webpack-plugin')
+const HtmlWebpackPlugin = require('html-webpack-plugin');
 const HtmlWebpackInlineSourcePlugin = require('html-webpack-inline-source-plugin');
 
 const preConfigureWebpack = function(htmlSourcePath, resourceManifestPath, outPath) {
@@ -118,7 +119,7 @@ worker.run((message, callback) => {
         const tmpdirOptions = {unsafeCleanup: true};
         let output = await tmp.withDir(async o => {
             let outputPath = devPath || o.path;
-            const pugHtmlPath = path.resolve(outputPath, 'report.html')
+            const pugHtmlPath = path.resolve(outputPath, 'report.html');
             const resourceManifestPath = path.resolve(assetPath, 'index.js');
             const webpackOutDir = path.resolve(outputPath, 'out');
             const bundledHtmlPath = path.resolve(outputPath, 'out', 'index.html');
@@ -126,11 +127,11 @@ worker.run((message, callback) => {
             fs.writeFileSync(pugHtmlPath, html);
             let stats = await webpackP(preConfigureWebpack(pugHtmlPath, resourceManifestPath, webpackOutDir));
             if(stats.compilation.errors.length > 0) {
-                const errors = stats.compilation.errors.map(err => err.message).join('\n');
-                console.error(errors);
+                console.error(stats.compilation.errors);
+                throw stats.compilation.errors.map(err => err.message).join('\n');
             }
             if (message.format === 'pdf') {
-                const pdfPath = path.resolve(outputPath, 'report.pdf')
+                const pdfPath = path.resolve(outputPath, 'report.pdf');
                 worker.send('status', ReportRecord.REPORT_STATUSES.GENERATING_PDF);
                 const page = await render.browseToPage(puppeteerConfig);
                 try {
@@ -143,6 +144,8 @@ worker.run((message, callback) => {
                 return fs.readFileSync(bundledHtmlPath, 'utf8');
             }
         }, tmpdirOptions);
+
+        // setTimeout(gcIfNeeded, 100, true);
         return Buffer.from(output, 'binary').toString('base64');  // Base64 encode to safely include in JSON
     })().then(output => callback(null, output), error => callback(error));
 

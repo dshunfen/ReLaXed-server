@@ -1,5 +1,6 @@
 const uuidv4 = require('uuid/v4');
 const debug = require('debug')('relaxedjs:server:reportRecord');
+const gcIfNeeded = require('./gcIfNeeded');
 
 const REPORT_STATUSES = {
     RECEIVED: 'Received',
@@ -81,9 +82,12 @@ class ReportRecord {
     _doCleanup() {
         if (this._output !== undefined) {
             console.log('Cleaning up report id %s', this._uuid);
+            const outputSize = this._output ? this._output.length : 0;
             delete this._reportCache[this._uuid];  // Remove this report record from the cache
+            const noReportsLeft = isEmpty(this._reportCache);
             delete this._reportCache;  // Get rid of our reference to the report cache to eliminate potential circular references
             delete this._output;  // The output is the biggest part, so make sure it is deleted immediately and doesn't stick around if this object isn't garbage collected
+            setTimeout(gcIfNeeded, 0, noReportsLeft, outputSize);  // Queue a full garbage collection run since Node doesn't seem to realize it needs to do garbage collection
         }
         else {
             console.log('Report id %s was already cleaned up', this._uuid);
@@ -100,5 +104,13 @@ class ReportRecord {
 }
 
 ReportRecord.REPORT_STATUSES = REPORT_STATUSES;
+
+function isEmpty(obj) {
+    for(let prop in obj) {
+        if(obj.hasOwnProperty(prop))
+            return false;
+    }
+    return true;
+}
 
 module.exports = ReportRecord;

@@ -7,6 +7,7 @@ module.exports = {
       script: 'bin/www',
 
       // Options reference: https://pm2.io/doc/en/runtime/reference/ecosystem-file/
+      interpreter_args: '--expose-gc',
       instances: 1,
       autorestart: true,
       watch: false,

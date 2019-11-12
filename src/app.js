@@ -16,12 +16,12 @@ const app = express()
 
 app.use(logger('[:date[iso]] :method :url :status :response-time ms - :req[content-length] - :res[content-length]'));
 app.use(express.json({
-  limit: '50mb',
+  limit: '100mb',
 }));
 app.use(express.urlencoded({
   extended: false,
   type: 'application/json',
-  limit: '50mb',
+  limit: '100mb',
 }));
 app.use(cookieParser());
 if (process.env.DEV_PATH) {
@@ -84,6 +84,7 @@ function init() {
       env: app.get('env'),
     })],
     workers: workerCount,
+    maxTasksPerWorker: 1,
   });
   pool.on('error', (err, task) => {
     console.error('Pool error: %o', err);
