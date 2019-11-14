@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "body-parser": "^1.19.0",
-    "cloth": "https://github.com/lelonek1/cloth#errorHandling",
+    "cloth": "https://github.com/lelonek1/cloth#2dee66ef93c28e0d521ea816d3565f71e15a1e80",
     "colors": "^1.3.0",
     "commander": "^2.15.1",
     "cookie-parser": "^1.4.4",

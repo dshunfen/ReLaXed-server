@@ -1,9 +1,11 @@
+const debug = require('debug')('relaxedjs:server:reportWorker');
+
 const worker = require('cloth/worker');
 
+const cp = require('child_process');
 const tmp = require('tmp-promise');
 const path = require('path');
 const fs = require('fs');
-const util = require('util');
 
 const plugins = require('relaxedjs/src/plugins');
 const { preConfigure } = require("relaxedjs/src/config");
@@ -13,66 +15,6 @@ const gcIfNeeded = require('./gcIfNeeded');
 const ReportRecord = require('./reportRecord');
 
 const puppeteerConfig = preConfigure(false);
-
-const webpack = require('webpack');
-const webpackP = util.promisify(webpack);
-
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const HtmlWebpackInlineSourcePlugin = require('html-webpack-inline-source-plugin');
-
-const preConfigureWebpack = function(htmlSourcePath, resourceManifestPath, outPath) {
-    return {
-        mode: 'production',
-        entry: resourceManifestPath,
-        output: {
-            path: outPath,
-            filename: 'bundle.js'
-        },
-        module: {
-            rules: [
-                {
-                    test: /\.css$/,
-                    use: [
-                        'style-loader',
-                        'css-loader'
-                    ]
-                },
-                {
-                    test: /\.scss$/,
-                    use: [
-                        'style-loader',
-                        'css-loader',
-                        'sass-loader'
-                    ]
-                },
-                {
-                    test: /\.png$/,
-                    use: [
-                        {
-                            loader: 'url-loader',
-                            options: {
-                                mimetype: 'image/png'
-                            }
-                        }
-                    ]
-                },
-                {
-                    test: /\.(png|woff|woff2|eot|ttf|svg)$/,
-                    use: ['url-loader?limit=10000000']
-                }
-            ]
-        },
-        plugins: [
-            new webpack.ContextReplacementPlugin(/moment[\/\\]locale$/, /en/),
-            new HtmlWebpackPlugin({
-                inject: 'head',
-                template: htmlSourcePath,
-                inlineSource: '.(js)$',
-            }),
-            new HtmlWebpackInlineSourcePlugin()
-        ]
-    };
-};
 
 const workerData = JSON.parse(worker.arguments[0]);
 
@@ -103,6 +45,7 @@ worker.run((message, callback) => {
         return;
     }
     (async () => {
+        console.log('Starting to generate %s with UUID %s', message.reportId, message.uuid);
         const assetPath = path.resolve(relaxedGlobals.basedir, message.reportId);
         const reportData = message.reportData;
 
@@ -125,11 +68,9 @@ worker.run((message, callback) => {
             const bundledHtmlPath = path.resolve(outputPath, 'out', 'index.html');
             const html = await render.generateHtmlFromPath(assetPath, relaxedGlobals, reportData);
             fs.writeFileSync(pugHtmlPath, html);
-            let stats = await webpackP(preConfigureWebpack(pugHtmlPath, resourceManifestPath, webpackOutDir));
-            if(stats.compilation.errors.length > 0) {
-                console.error(stats.compilation.errors);
-                throw stats.compilation.errors.map(err => err.message).join('\n');
-            }
+
+            await runWebpack(pugHtmlPath, resourceManifestPath, webpackOutDir);
+
             if (message.format === 'pdf') {
                 const pdfPath = path.resolve(outputPath, 'report.pdf');
                 worker.send('status', ReportRecord.REPORT_STATUSES.GENERATING_PDF);
@@ -145,8 +86,53 @@ worker.run((message, callback) => {
             }
         }, tmpdirOptions);
 
-        // setTimeout(gcIfNeeded, 100, true);
+        setTimeout(gcIfNeeded, 1000, true);
         return Buffer.from(output, 'binary').toString('base64');  // Base64 encode to safely include in JSON
     })().then(output => callback(null, output), error => callback(error));
 
 });
+
+async function runWebpack(pugHtmlPath, resourceManifestPath, webpackOutDir) {
+    return new Promise((resolve, reject) => {
+        const proc = cp.fork(`${__dirname}/runWebpack.js`);
+        let completed = false;
+
+        proc.on('message', (message) => {
+            debug('Got message from webpack runner:', message);
+            if (message.error) {
+                completed = true;
+                reject(message.error);
+            }
+            else {
+                console.warn('Got unnexpected message from webpack runner:', message)
+            }
+        });
+
+        proc.on('disconnect', () => {
+            debug('Webpack runner disconnected, must be complete (already completed: %s)', completed);
+            if (!completed) {
+                completed = true;
+                resolve(true);
+            }
+        });
+
+        proc.on('exit', (code, signal) => {
+            debug('Webpack runner exited; code: %s, signal: %s, completed: %s', code, signal, completed);
+            if (!completed) {
+                completed = true;
+                if (code === 0) {
+                    resolve(true);
+                }
+                else if (code !== null) {
+                    reject('Webpack runner exited with code ' + code);
+                }
+                else {
+                    reject('Webpack runner exited due to signal ' + signal);
+                }
+            }
+        });
+
+        // Tell the runner what to bundle
+        proc.send({pugHtmlPath, resourceManifestPath, webpackOutDir});
+    });
+}

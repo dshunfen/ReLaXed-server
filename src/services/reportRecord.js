@@ -19,8 +19,8 @@ class ReportRecord {
         this._status = REPORT_STATUSES.RECEIVED;
         this._success = null;
         this._output = null;
-        reportCache[this.uuid] = this;
-        runFunc(this._handleStatus.bind(this)).then(this._handleComplete.bind(this), this._handleError.bind(this));
+        reportCache[this._uuid] = this;
+        runFunc(this._handleStatus.bind(this), this._uuid).then(this._handleComplete.bind(this), this._handleError.bind(this));
         this._cleanupIn(60 * 60 * 1000);  // 1 hour
     }
 
@@ -55,7 +55,7 @@ class ReportRecord {
     }
 
     _handleComplete(output) {
-        debug(this._uuid, 'finished');
+        console.debug('Finished generating %s', this._uuid);
         this._output = output;
         this._success = true;
         this._status = REPORT_STATUSES.FINISHED;

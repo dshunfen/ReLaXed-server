@@ -40,13 +40,14 @@ router.post('/reports/:reportId', async (req, res) => {
     return;
   }
 
-  function doRender(updateStatus) {
+  function doRender(updateStatus, uuid) {
     const pool = req.app.locals.pool;
     return new Promise((resolve, reject) => {
       const task = pool.run({
         reportId,
         format,
         reportData,
+        uuid,
       });
       task
           .on('end', resolve)
@@ -59,6 +60,7 @@ router.post('/reports/:reportId', async (req, res) => {
 
   const record = new ReportRecord(doRender, reportParams, req.app.locals.reportCache);
 
+  console.log('Queued generating %s with UUID %s', reportId, record.uuid);
   res.send({uuid: record.uuid})
 });
 

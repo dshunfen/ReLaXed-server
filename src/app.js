@@ -73,7 +73,7 @@ function init() {
       workerCount = 1;
     }
     else {
-      workerCount = Math.max(os.cpus()/4, 1);
+      workerCount = Math.max(os.cpus().length/4, 1);
     }
   }
   debug("Using %s worker processes", workerCount);
@@ -84,7 +84,7 @@ function init() {
       env: app.get('env'),
     })],
     workers: workerCount,
-    maxTasksPerWorker: 1,
+    maxTasksPerWorker: 100,
   });
   pool.on('error', (err, task) => {
     console.error('Pool error: %o', err);
