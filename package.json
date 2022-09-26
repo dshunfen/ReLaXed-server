@@ -43,7 +43,7 @@
     "morgan": "~1.9.1",
     "multer": "^1.4.2",
     "node-sass": "^4.13.1",
-    "pm2": "^3.5.2",
+    "pm2": "^5.2.0",
     "relaxedjs": "git+https://github.com/dshunfen/ReLaXed.git#relaxed_server",
     "sass-loader": "^8.0.2",
     "style-loader": "^1.1.3",
